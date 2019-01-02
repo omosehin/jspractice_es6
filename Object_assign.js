@@ -112,6 +112,11 @@ console.log(obj); // { "0": "a", "1": "b", "2": "c" }
 /*
 the assignment operator doesn't create a copy of an object,
 it only assigns a reference to it, let's look at the following code:
+The obj variable is a container for the new object initialized. The
+ copy variable is pointing to the same object and is a reference to that object. So basically
+ this { a: 1, b: 2, } object is saying: There are now two ways to gain access 
+ to me. You have to pass through the obj variable or the copy variable either 
+ ways you still get to me and anything you do to me via these ways (gateways) will affect me.
 */
 
 console.log(`.................Copy Reference................`);
@@ -123,3 +128,229 @@ b:2
 let copyb=objb;
 objb.a=5;
 console.log(copyb.a);
+
+console.log(`.................The Naive Way of Copying Objects................`);
+/*
+INHERENT ISSUES
+1.objCopy object has a new Object.prototype method different from the mainObj object prototype method, which is not what we want. We want an exact copy of the original object.
+2.Property descriptors are not copied. A "writable" descriptor with value set to be false will be true in the objCopy object.
+3.The code above only copies enumerable properties of mainObj.
+4.If one of the properties in the original object is an object itself, then it will be shared between the copy and the original making their respective properties point to the same object.
+*/
+function copys(mainObj) {
+    let objCopy = {}; // objCopy will store a copy of the mainObj
+    let key;
+  
+    for (key in mainObj) {
+      objCopy[key] = mainObj[key]; // copies each property to the objCopy object
+    }
+    return objCopy;
+  }
+  
+  const mainObj = {
+    a: 2,
+    b: 5,
+    c: {
+      x: 7,
+      y: 4,
+    },
+  }
+  
+  console.log(copys(mainObj));
+
+
+  //Shallow Copying Objects
+
+ /*
+The Object.assign() method is used to copy the values of all
+enumerable own properties from one or more source objects to a target object. 
+*/
+
+let objc = {
+    a: 1,
+    b: 2,
+  };
+  let objCopy = Object.assign({}, objc);
+  console.log(objCopy); //{ a: 1, b: 2 } Well, this does the job so far. We have made a copy of obj. Let's see if immutability exist
+  objCopy.b = 89;
+  console.log(objCopy); //{ a: 1, b: 89 } This implies that we have successfully created a copy of the source object without any references to it.
+  console.log(objCopy); //{ a: 1, b: 2 }
+  
+  //pitfall of object.assign()
+
+  let objr = {
+    a: 1,
+    b: {
+      c: 2,
+    },
+  }
+  let newObj = Object.assign({}, objr);
+  console.log(newObj); // { a: 1, b: { c: 2} }
+  
+  obj.a = 10;
+  console.log(objr); // { a: 10, b: { c: 2} }
+  console.log(newObj); // { a: 1, b: { c: 2} }
+  
+  newObj.a = 20;
+  console.log(objr); // { a: 10, b: { c: 2} }
+  console.log(newObj); // { a: 20, b: { c: 2} }
+  
+  newObj.b.c = 30;
+  console.log(objr); // { a: 10, b: { c: 30} }
+  console.log(newObj); // { a: 20, b: { c: 30} }
+  
+  // Note: newObj.b.c = 30; Why is obj.b.c = 30?
+
+  /*
+  Well, that is a pitfall of Object.assign(). Object.assign
+  only makes shallow copies. Both newObj.b and obj.b share
+  the same reference to the object because of individual
+  copies were not made, instead a reference to the object
+  was copied. Any change made to any of the object's property
+  applies to all references using the object. How can we fix
+  this? Continue reading... we have a fix in the next section.
+  
+  Note: Properties on the prototype chain and non-enumerable 
+  properties cannot be copied. See here:
+  */
+ let someObj = {
+    a: 2,
+  }
+  
+  let objz = Object.create(someObj, { 
+    b: {
+      value: 2,  
+    },
+    c: {
+      value: 3,
+      enumerable: true,  
+    },
+  });
+  
+  let objCopy3 = Object.assign({}, objz);
+  console.log(objCopy3); // { c: 3 }
+
+  /*
+1.someObj is on obj's prototype chain so it wouldn't be copied.
+2.property b is a non-enumerable property.
+3.property c has an enumerable property descriptor allowing it to be enumerable. That's why it was copied.
+  */
+
+console.log(`                ................
+                Deep Copying Objects
+                ..................`);
+/*
+A deep copy will duplicate every object it encounters. The copy
+and the original object will not share anything, so it will be
+a copy of the original. Here's the fix to the problem we encountered using Object.assign()
+*/
+//Using JSON.parse(JSON.stringify(object));
+//Now newObj.b has a copy and not a reference!
+//This is a way to deep copy objects.
+
+let objbc = { 
+    a: 1,
+    b: { 
+      c: 2,
+    },
+  }
+  
+  let newObjd = JSON.parse(JSON.stringify(objbc));
+  
+  objbc.b.c = 20;
+  console.log(objbc); // { a: 1, b: { c: 20 } } IMMUTABLE
+  console.log(newObjd); // { a: 1, b: { c: 2 } } (New Object Intact!)
+
+  //Unfortunately, this method can't be used to copy user-defined object methods. See below.
+
+  console.log(`                ................
+                Deep Copying Objects:Copying Object methods
+                ..................`);
+                let objs = {
+                    name: 'scotch.io',
+                    exec: function exec() {
+                      return true;
+                    },
+                  }
+                  
+                  let method1 = Object.assign({}, objs);
+                  let method2 = JSON.parse(JSON.stringify(objs));
+                  
+                  console.log(method1); //Object.assign({}, obj)
+                  /* result
+                  {
+                    exec: function exec() {
+                      return true;
+                    },
+                    name: "scotch.io"
+                  }
+                  */
+                  
+                  console.log(method2); // JSON.parse(JSON.stringify(obj))
+                  /* result
+                  {
+                    name: "scotch.io"
+                  }
+                  */
+//The result shows that Object.assign() can be used to copy methods while JSON.parse(JSON.stringify(obj)) can't be used.
+
+console.log(`                ................
+Deep Copying Objects:Copying Circular Objects
+..................`);
+//Circular objects are objects that have properties referencing themselves.
+
+let objf={
+    a:'a',
+    b:{
+        c:'c',
+        d:'d',
+    },
+}
+
+objf.c = objf.b;
+objf.e = objf.a;
+objf.b.c = objf.c;
+objf.b.d = objf.b;
+objf.b.e = objf.b.c;
+console.log(objf.e);
+
+//let newObjaa = JSON.parse(JSON.stringify(objf));
+let newObjab = Object.assign({}, objf);
+
+
+console.log(newObj);  //ERROR  JSON.parse(JSON.stringify(obj)) clearly doesn't work for circular objects.
+console.log(newObjab);  // Object.assign() works fine for shallow copying circular objects but wouldn't work for deep copying.
+
+
+
+
+console.log(`                ................
+Using Spread Elements ( ... )
+..................`);
+/*
+ES6 already has rest elements for array destructuring assignment and spread elements
+ for array literals implemented. Take a look at spread element implementation on an array here:
+*/
+
+const array = [
+    "a",
+    "c",
+    "d", {
+      four: 4
+    },
+  ];
+  const newArray = [...array];
+  console.log(newArray);
+  // Result 
+  // ["a", "c", "d", { four: 4 }]
+
+  //Spread properties in object initializers copies own enumerable properties from a source object onto the target object.
+  let objh = {
+    one: 1,
+    two: 2,
+  }
+  
+  let newObjf = { ...objh };
+  console.log(newObjf)
+  
+  // { one: 1, two: 2 }
