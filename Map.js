@@ -23,7 +23,7 @@ var doubles = numbers.map(num => {
   return num * 2;
 });
 console.log(doubles);
-
+//Using map to reformat objects in an array
 var Arrayd = [
   { key: 1, value: 10 },
   { key: 2, value: 20 },
@@ -36,3 +36,4 @@ var refomattedArray = Arrayd.map(obj => {
   return robj;
 });
 console.log(refomattedArray);
+
